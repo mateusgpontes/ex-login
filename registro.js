@@ -2,9 +2,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const db = require('mongodb');
 const app = express();
-let buscaUsuario = require('./app/models/usuario');
+let usuarioColl = require('./app/models/usuario');
 
 mongoose.Promise = global.Promise;
 
@@ -36,7 +35,7 @@ router.route('/usuarios')
 
     .post((req, res) => {
 
-        let usuario = buscaUsuario();
+        let usuario = usuarioColl();
 
         usuario.nome = req.body.nome;
         usuario.senha = req.body.senha;
@@ -52,7 +51,7 @@ router.route('/usuarios')
     })
 
     .get((req, res) => {
-        buscaUsuario.find((error, usuarios) => {
+        usuarioColl.find((error, usuarios) => {
             if(error){
                 res.status(500).send('Erro ao acessar banco de dados...' + error);
                 return;
@@ -67,9 +66,12 @@ router.route('/usuarios')
 
     .post((req, res) => {
 
-        let usuarioEntrando = buscaUsuario();
+        let query = {
+            nome: req.body.nome,
+            senha: req.body.senha
+        }
 
-        req.db.collection('usuarios').findOne(usuarioEntrando, (error, data) =>{
+        usuarioColl.findOne(query, (error, data) =>{
             if(error){
                 res.status(500).send('Error ao acessa banco de dados...' + error);
 
@@ -89,7 +91,7 @@ router.route('/usuarios')
 
     .get((req, res) => {
 
-        buscaUsuario.findById(req.params.usuario_id, (error, usuario) => {
+        usuarioColl.findById(req.params.usuario_id, (error, usuario) => {
             if(error){
                 res.status(500).send('Id do usuario não encontrado...' + error);
                 return;
@@ -101,7 +103,7 @@ router.route('/usuarios')
 
     .put((req, res) => {
 
-        buscaUsuario.findById(req.params.usuario_id, (error, usuario) => {
+        usuarioColl.findById(req.params.usuario_id, (error, usuario) => {
             if(error){
                 res.status(500).send('Id do usuario não encontrado' + error);
                 return;
@@ -122,9 +124,9 @@ router.route('/usuarios')
     })
 
     .delete((req, res) => {
-        buscaUsuario.remove({
+        usuarioColl.deleteOne({
             _id: req.params.usuario_id
-        }),
+        },
         (error) => {
             if(error){
                 res.status(500).send('Id não encontrado...' + error);
@@ -132,7 +134,7 @@ router.route('/usuarios')
             }
             
             res.json({ menssage: 'Usuario excluido com sucesso.' })
-        }
+        })
     });
 
 //Definindo um padrão rotas prefixadas: '/api':
