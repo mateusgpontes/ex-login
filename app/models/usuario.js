@@ -2,9 +2,9 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-let UsuarioSchema = new Schema({
+let Usuario = new Schema({
     nome: String,
-    sehna: String
+    senha: String
 });
 
-module.exports = mongoose.model('Usuario', UsuarioSchema);
+module.exports = mongoose.model('Usuario', Usuario);

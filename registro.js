@@ -2,144 +2,138 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const usuario = require('./app/models/usuario');
+const db = require('mongodb');
 const app = express();
+let buscaUsuario = require('./app/models/usuario');
+
+mongoose.Promise = global.Promise;
 
 //URI: Mlab:
-/*mongoose.connect('mongodb://<mateus>:mateus12>@ds227853.mlab.com:27853/bancologin', {
+mongoose.connect('mongodb://mateus:mateus12@ds227853.mlab.com:27853/bancologin', {
+    useNewUrlParser: true
+});
+
+//Local: mongoDb:
+/*mongoose.connect('mongodb://localhost:27017/bancologin', {
     useNewUrlParser: true
 });*/
 
-//Local: mongoDb:
-mongoose.connect('mongodb://localhost:27017/bancologin', {
-    useNewUrlParser: true
-} );
-
 //Configuração do app para usar o 'bodyParser()':
-app.use(bodyParser.urlencoded());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 //Definindo rota e criando rota via Express:
 const port = process.env.port || 3000;
 const router = express.Router();
 
-//Rota de exemplo:
-router.get('/teste', (req, res) => {
-    res.json({ message: 'Testando API'})
+router.use((req, res, next) => {
+    console.log('Rota iniciada');
+    next();
 });
 
-/*
-app.use(expressMongoDb('mongodb://mateus:mateus12@ds227853.mlab.com:27853/bancologin?authSource=admin'));
+//Adiciona e busca o nome e a senha do usuario ao banco de dados:
+router.route('/usuarios')
 
-function fichaUsuario(dados){
- 
-    let UsuarioLogin = {
-        nome: dados.nome,
-        senha: dados.senha
-    }
+    .post((req, res) => {
 
-}
+        let usuario = buscaUsuario();
 
-function buscaID(dados){
+        usuario.nome = req.body.nome;
+        usuario.senha = req.body.senha;
 
-    let query = {
-        _id: mongodb(dados)
-    }
+        usuario.save((error) => {
+            if(error){
+                res.status(500).send('Erro ao tentar salvar o usuario...' + error);
+                return;
+            }
 
-}
-
-router.post('/registrar', (req, res) => {
-
-    let novoUsuario = fichaUsuario(req.body);
-
-    req.db.collection('usuarios').insert(novoUsuario, (error) => {
-
-        if(error){
-            res.status(500).send("Erro ao registrar usuário");
-            return;
-        }
-
-            res.send(req.body);
-
-    })
-});
-
-router.get('/registrados', (req, res) => {
-
-    req.db.collection('usuarios').find().toArray((error, data))
-
-        if(error){
-            res.status(500).send("erro ao acessar o banco de dados");
-            return;
-        }
-
-            res.send(data);
-
-});
-
-router.get('/registrados/:id', (req, res) => {
-
-    let query = buscaID(req.params.id);
-
-    req.db.collection('usuarios').findOne(query, (error, data) => {
-        
-        if(error){
-            res.status(500).send("erro ao acessar o banco de dados");
-            return;
-        }
-        
-        if(!data){
-            res.status(404).send("esse usuario não existe");
-            return;
-        }
-
-            res.send(data);
-
-    })
-    
-});
-
-router.put('/registrados/:id', (req, res) => {
-
-    let usuario = fichaUsuario(req.body);
-
-    let query = buscaID(req.params.id);
-
-    req.db.collection('usuarios').updateOne(query, usuario, (error, data) => {
-
-        if(error){
-            res.status(500).send("erro ao acessar o banco de dados");
-            return;
-        }
-        
-        if(!data){
-            res.status(404).send("esse usuario não existe");
-            return;
-        }
-
-            res.send(data);
-
+            res.json({ message: 'Usuario salvo com sucesso'});
+        });
     })
 
-});
+    .get((req, res) => {
+        buscaUsuario.find((error, usuarios) => {
+            if(error){
+                res.status(500).send('Erro ao acessar banco de dados...' + error);
+                return;
+            }
 
-router.delete('/registrados/:id', (req, res) => {
+            res.json(usuarios);
+        });
+    });
 
-    let query = buscaID(req.params.id);
+    //Loga usuario:
+    router.route('/usuarios/login')
 
-    req.db.collecton('usuarios').deleteOne(query, (error, data) => {
+    .post((req, res) => {
 
-        if(error){
-            res.status(500).send('erro ao acessar o banco de dados');
-            return;
-        }
+        let usuarioEntrando = buscaUsuario();
 
-        res.send(data);
+        req.db.collection('usuarios').findOne(usuarioEntrando, (error, data) =>{
+            if(error){
+                res.status(500).send('Error ao acessa banco de dados...' + error);
 
+            }
+            if(!data){
+                res.status(401).send('Nome ou senha não encontrados');
+
+            }else(data)
+                res.json({ menssage: 'Logado com sucesso'});
+
+        });
+            
     })
 
-});
-*/
+    //Busca/atualiza e deleta por id
+    router.route('/usuarios/:usuario_id')
+
+    .get((req, res) => {
+
+        buscaUsuario.findById(req.params.usuario_id, (error, usuario) => {
+            if(error){
+                res.status(500).send('Id do usuario não encontrado...' + error);
+                return;
+            }
+
+            res.json(usuario);
+        });
+    })
+
+    .put((req, res) => {
+
+        buscaUsuario.findById(req.params.usuario_id, (error, usuario) => {
+            if(error){
+                res.status(500).send('Id do usuario não encontrado' + error);
+                return;
+            }
+
+            usuario.nome = req.body.nome;
+            usuario.senha = req.body.senha;
+
+            usuario.save((error) => {
+                if(error){
+                    res.status(500).send('Erro ao atualizar o usuario...' + error);
+                    return;
+                }
+
+                res.json({ message: 'Usuario atualizado com sucesso.'});
+            });
+        });
+    })
+
+    .delete((req, res) => {
+        buscaUsuario.remove({
+            _id: req.params.usuario_id
+        }),
+        (error) => {
+            if(error){
+                res.status(500).send('Id não encontrado...' + error);
+                return;
+            }
+            
+            res.json({ menssage: 'Usuario excluido com sucesso.' })
+        }
+    });
 
 //Definindo um padrão rotas prefixadas: '/api':
 app.use('/api', router);
